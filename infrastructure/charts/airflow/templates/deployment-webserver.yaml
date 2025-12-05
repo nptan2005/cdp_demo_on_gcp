@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "airflow.fullname" . }}-webserver
+  labels:
+    app.kubernetes.io/name: {{ include "airflow.name" . }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      component: webserver
+  template:
+    metadata:
+      labels:
+        component: webserver
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      containers:
+        - name: webserver
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          args: ["webserver"]
+          env:
+            - name: AIRFLOW__CORE__EXECUTOR
+              value: "KubernetesExecutor"
+            - name: OPENLINEAGE_URL
+              value: "{{ .Values.openlineage.url }}"
+          ports:
+            - containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 60
+          resources: {{ toYaml .Values.resources.webserver | indent 12 }}

@@ -1,0 +1,36 @@
+project: my-cdp-demo-01
+region: asia-southeast1
+
+# GCS bucket names (buckets phải tồn tại hoặc Terraform sẽ tạo)
+gcsBucket: my-cdp-demo-gcs
+
+images:
+  registry: gcr.io/my-cdp-demo-01
+  airflow: gcr.io/my-cdp-demo-01/airflow:2.10.5
+  sparkJob: gcr.io/my-cdp-demo-01/spark-job:latest
+
+resources:
+  airflow:
+    web:
+      requests:
+        cpu: "200m"
+        memory: "512Mi"
+      limits:
+        cpu: "500m"
+        memory: "1Gi"
+    scheduler:
+      requests:
+        cpu: "200m"
+        memory: "512Mi"
+  sparkOperator:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+
+autoscaling:
+  sparkApp:
+    minExecutors: 0
+    maxExecutors: 10
+  airflowWorkers:
+    minReplicas: 0
+    maxReplicas: 4

@@ -1,0 +1,24 @@
+apiVersion: v2
+name: cdp-core
+description: "Umbrella chart for CDP components (Airflow, Spark-Operator, OpenMetadata, OpenLineage, MinIO, Observability)"
+version: 0.1.0
+appVersion: "1.0"
+dependencies:
+  - name: airflow
+    version: 0.1.0
+    repository: "file://../airflow"
+  - name: spark-operator
+    version: 0.1.0
+    repository: "file://../spark-operator"
+  - name: openlineage
+    version: 0.1.0
+    repository: "file://../openlineage"
+  - name: openmetadata
+    version: 0.1.0
+    repository: "file://../openmetadata"
+  - name: minio
+    version: 0.1.0
+    repository: "file://../minio"
+  - name: observability
+    version: 0.1.0
+    repository: "file://../observability"

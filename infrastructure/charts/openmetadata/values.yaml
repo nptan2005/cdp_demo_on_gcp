@@ -1,0 +1,10 @@
+prometheusOperator:
+  enabled: true
+  prometheus:
+    prometheusSpec:
+      retention: 7d
+grafana:
+  adminPassword: "admin"
+loki:
+  persistence:
+    enabled: false

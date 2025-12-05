@@ -1,0 +1,38 @@
+replicaCount: 1
+image:
+  repository: apache/airflow
+  tag: 2.10.5
+  pullPolicy: IfNotPresent
+executor: KubernetesExecutor
+resources:
+  webserver:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+  scheduler:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+  worker:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+serviceAccount:
+  create: true
+  name: airflow-ksa
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+persistence:
+  enabled: false
+  # In production use GCS for logs and remote metadata store
+extraEnv:
+  - name: AIRFLOW__CORE__ENABLE_XCOM_PICKLING
+    value: 'False'
+openlineage:
+  enabled: true
+  url: http://openlineage.openlineage.svc.cluster.local:5000
+# connections & secrets are injected from Kubernetes secret or Workload Identity

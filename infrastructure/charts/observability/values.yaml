@@ -1,0 +1,12 @@
+openmetadata:
+  server:
+    port: 8585
+    baseUrl: http://openmetadata:8585/api
+    database:
+      host: postgres-openmetadata
+      port: 5432
+      user: openmetadata
+      password: secret
+    elasticsearch:
+      host: elasticsearch
+      port: 9200

@@ -1,0 +1,25 @@
+apiVersion: sparkoperator.k8s.io/v1beta2
+kind: SparkApplication
+metadata:
+  name: bronze-to-silver
+spec:
+  type: Python
+  pythonVersion: "3"
+  mode: cluster
+  image: gcr.io/my-project/spark-job:latest
+  mainApplicationFile: local:///opt/spark/jobs/bronze_to_silver.py
+  sparkVersion: "3.5.1"
+  driver:
+    cores: 1
+    memory: "1g"
+    serviceAccount: spark-job-sa
+  executor:
+    cores: 1
+    instances: 2
+    memory: "2g"
+  deps:
+    jars:
+      - gs://my-cdp-demo-gcs/jars/openlineage-spark.jar
+  sparkConf:
+    "spark.openlineage.transport.url": "http://openlineage.openlineage.svc.cluster.local:5000"
+    "spark.openlineage.namespace": "gke-spark"

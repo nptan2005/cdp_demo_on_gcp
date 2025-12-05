@@ -1,0 +1,4 @@
+accessKey: "admin"
+secretKey: "admin123"
+persistence:
+  enabled: false  # avoid persistent PVCs on autpilot demo, use GCS

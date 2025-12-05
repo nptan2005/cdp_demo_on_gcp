@@ -1,0 +1,11 @@
+sparkOperator:
+  image: "gcr.io/spark-operator/spark-operator:v1beta2"
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+rbac:
+  create: true

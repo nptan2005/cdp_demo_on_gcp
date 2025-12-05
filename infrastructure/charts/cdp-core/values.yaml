@@ -1,0 +1,27 @@
+airflow:
+  serviceAccount:
+    create: false
+    name: airflow-ksa
+  image:
+    repository: gcr.io/my-cdp-demo-01/airflow
+    tag: "2.10.5"
+
+spark:
+  serviceAccount:
+    create: false
+    name: spark-job-sa
+  image:
+    repository: gcr.io/my-cdp-demo-01/spark-job
+    tag: "latest"
+
+openlineage:
+  enabled: true
+  image:
+    repository: gcr.io/my-cdp-demo-01/openlineage
+    tag: "latest"
+
+openmetadata:
+  enabled: true
+  image:
+    repository: gcr.io/my-cdp-demo-01/openmetadata
+    tag: "1.10.8"

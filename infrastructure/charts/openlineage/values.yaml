@@ -1,0 +1,9 @@
+image:
+  repository: marquezproject/marquez
+  tag: 0.40.0
+service:
+  type: ClusterIP
+  port: 5000
+postgres:
+  enabled: true
+  image: postgres:15

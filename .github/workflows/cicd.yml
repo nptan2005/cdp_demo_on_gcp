@@ -1,0 +1,39 @@
+name: CDP CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "jobs/**"
+      - "dags/**"
+      - "infrastructure/**"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT }}
+
+      - name: Authenticate to GKE
+        run: |
+          gcloud container clusters get-credentials cdp-autopilot --region asia-southeast1 --project ${{ secrets.GCP_PROJECT }}
+
+      - name: Build & push spark job image
+        run: |
+          docker build -t gcr.io/${{ secrets.GCP_PROJECT }}/spark-job:latest jobs/
+          docker push gcr.io/${{ secrets.GCP_PROJECT }}/spark-job:latest
+
+      - name: Helm deploy
+        run: |
+          helm repo update
+          helm dependency update infrastructure/charts/cdp-core
+          helm upgrade --install cdp-core infrastructure/charts/cdp-core -n cdp --create-namespace -f infrastructure/envs/dev.yaml
+
+      - name: Upload DAGs to Composer (if using Composer)
+        run: |
+          gsutil -m rsync -r dags gs://asia-southeast1-airflow-tes-943b0b0d-bucket/dags
