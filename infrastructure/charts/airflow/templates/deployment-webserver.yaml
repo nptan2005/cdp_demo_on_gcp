@@ -5,13 +5,15 @@ metadata:
   labels:
     app.kubernetes.io/name: {{ include "airflow.name" . }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicaCount | default 1 }}
   selector:
     matchLabels:
+      app: {{ include "airflow.fullname" . }}-webserver
       component: webserver
   template:
     metadata:
       labels:
+        app: {{ include "airflow.fullname" . }}-webserver
         component: webserver
     spec:
       serviceAccountName: {{ .Values.serviceAccount.name }}
@@ -23,7 +25,7 @@ spec:
             - name: AIRFLOW__CORE__EXECUTOR
               value: "KubernetesExecutor"
             - name: OPENLINEAGE_URL
-              value: "{{ .Values.openlineage.url }}"
+              value: "{{ .Values.openlineage.url | default "http://openlineage:5000" }}"
           ports:
             - containerPort: 8080
           livenessProbe:
@@ -32,4 +34,6 @@ spec:
               port: 8080
             initialDelaySeconds: 30
             periodSeconds: 60
-          resources: {{ toYaml .Values.resources.webserver | indent 12 }}
+          # Place resources on its own line, then indent the YAML rendered by toYaml
+          resources:
+{{ toYaml .Values.resources.webserver | indent 12 }}

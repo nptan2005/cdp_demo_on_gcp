@@ -1,8 +1,13 @@
 replicaCount: 1
+serviceAccount:
+  create: true
+  name: airflow-ksa
 image:
-  repository: apache/airflow
+  registry: gcr.io
+  repository: my-cdp-demo-01/airflow
   tag: 2.10.5
   pullPolicy: IfNotPresent
+
 executor: KubernetesExecutor
 resources:
   webserver:
@@ -20,9 +25,7 @@ resources:
     requests:
       cpu: "500m"
       memory: "1Gi"
-serviceAccount:
-  create: true
-  name: airflow-ksa
+
 podDisruptionBudget:
   enabled: true
   minAvailable: 1

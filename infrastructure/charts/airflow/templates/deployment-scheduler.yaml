@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "airflow.fullname" . }}-scheduler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "airflow.fullname" . }}-scheduler
+  template:
+    metadata:
+      labels:
+        app: {{ include "airflow.fullname" . }}-scheduler
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      containers:
+        - name: scheduler
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          command: ["airflow", "scheduler"]
