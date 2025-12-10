@@ -1,51 +1,42 @@
-name: Build Apache Atlas (dist only)
+name: Build Apache Atlas 2.4.0
 
 on:
   workflow_dispatch:
 
 jobs:
   build-dist:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 90
+    runs-on: ubuntu-latest
     env:
-      MAVEN_OPTS: "-Xms2g -Xmx2g"
-      BRANCH: "release-2.4.0"                # đổi nếu cần (release-2.5.0, release-2.4.0,...)
+      BRANCH: "release-2.4.0"
       GIT_URL: "https://github.com/apache/atlas.git"
+      MAVEN_OPTS: "-Xms2g -Xmx2g"
     steps:
-      - name: Checkout tiny repo
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Install OS deps
+      - name: Install dependencies
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y openjdk-11-jdk maven git dos2unix unzip curl
-      - name: Set JAVA_HOME
-        run: echo "JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64" >> $GITHUB_ENV
+          sudo apt-get install -y openjdk-11-jdk maven git unzip dos2unix
+          echo "JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64" >> $GITHUB_ENV
 
-      - name: Clone Apache Atlas
+      - name: Clone Atlas
         run: |
-          rm -rf atlas
-          git clone --single-branch --branch ${BRANCH} ${GIT_URL} atlas
-          cd atlas
-          echo "Cloned $(git rev-parse --abbrev-ref HEAD) @ $(git rev-parse --short HEAD)"
+          git clone --branch ${BRANCH} --single-branch ${GIT_URL} atlas
 
-      - name: Build distribution (skip heavy modules)
+      - name: Build dist
         run: |
           cd atlas
-          mvn clean package -Pdist -DskipTests -Drat.skip=true -DskipDocs \
-            -pl '!atlas-testtools,!webapp,!dashboardv2,!dashboardv3' -am -T1C
+          mvn clean package -Pdist -DskipTests -Drat.skip=true -DskipDocs -T1C
 
-      - name: Collect dist artifacts
+      - name: Copy artifacts
         run: |
-          cd atlas
           mkdir -p dist
-          find distro -maxdepth 3 -type f -name 'apache-atlas-*server.tar.gz' -print -exec cp -f {} dist/ \;
-          ls -lh dist || true
+          cp atlas/distro/target/apache-atlas-*.tar.gz dist/
+          ls -lh dist
 
-      - name: Upload artifact (tar.gz)
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: apache-atlas-dist
-          path: atlas/dist/
+          name: atlas-dist-2.4.0
+          path: dist/
