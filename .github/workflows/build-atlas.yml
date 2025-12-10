@@ -1,0 +1,54 @@
+name: Build Apache Atlas (dist)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-dist:
+    runs-on: ubuntu-22.04
+    env:
+      MAVEN_OPTS: "-Xms2g -Xmx2g"
+      ATLAS_VERSION: "3.0.0-SNAPSHOT"
+      BRANCH: "master"          # đổi nếu muốn
+      GIT_URL: "https://github.com/apache/atlas.git"
+    steps:
+      - name: Checkout (short wrapper repo)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install apt deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openjdk-11-jdk maven git dos2unix unzip curl
+      - name: Set JAVA_HOME (use JDK 11 to be safe)
+        run: echo "JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64" >> $GITHUB_ENV
+
+      - name: Clone Apache Atlas
+        run: |
+          rm -rf atlas
+          git clone --single-branch --branch ${BRANCH} ${GIT_URL} atlas
+          ls -la atlas
+
+      - name: Prepare maven options & skip heavy modules
+        run: |
+          cd atlas
+          # ensure clean local repo for reproducible build
+          mvn -v
+          # Build only distribution; skip problematic web UIs & tests
+          mvn clean package -Pdist -DskipTests -Drat.skip=true -DskipDocs \
+            -pl '!atlas-testtools,!webapp,!dashboardv2,!dashboardv3' -am -T1C
+
+      - name: Collect dist artifacts
+        run: |
+          cd atlas
+          mkdir -p dist
+          # find the server tar.gz (may be under distro/target/)
+          find distro -maxdepth 3 -type f -name 'apache-atlas-*server.tar.gz' -print -exec cp -f {} dist/ \;
+          ls -la dist || true
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: apache-atlas-dist
+          path: atlas/dist/

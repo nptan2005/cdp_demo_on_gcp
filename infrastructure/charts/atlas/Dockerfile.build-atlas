@@ -1,0 +1,9 @@
+FROM maven:3.9.6-eclipse-temurin-17 AS builder
+
+WORKDIR /build
+COPY apache-atlas-2.3.0 /build
+
+# Build Atlas server + client + repo + graph
+RUN mvn clean package -DskipTests -Drat.skip=true \
+    -pl '!webapp,!dashboardv2,!dashboardv3,!test-tools,!atlas-testtools' \
+    -am

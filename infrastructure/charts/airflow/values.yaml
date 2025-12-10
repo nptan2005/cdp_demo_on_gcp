@@ -1,41 +1,39 @@
-replicaCount: 1
-serviceAccount:
-  create: true
-  name: airflow-ksa
+executor: KubernetesExecutor
+
 image:
-  registry: gcr.io
-  repository: my-cdp-demo-01/airflow
-  tag: 2.10.5
+  repository: gcr.io/cdp-tan-project/airflow
+  tag: "2.10.5-spark4"
   pullPolicy: IfNotPresent
 
-executor: KubernetesExecutor
-resources:
-  webserver:
-    requests:
-      cpu: "250m"
-      memory: "512Mi"
-    limits:
-      cpu: "500m"
-      memory: "1Gi"
-  scheduler:
-    requests:
-      cpu: "250m"
-      memory: "512Mi"
-  worker:
-    requests:
-      cpu: "500m"
-      memory: "1Gi"
+config:
+  AIRFLOW__CORE__FERNET_KEY: "{{ .Values.fernetKey }}"
+  AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "False"
+  AIRFLOW__CORE__ENABLE_XCOM_PICKLING: "False"
+  AIRFLOW__LINEAGE__BACKEND: "openlineage.airflow.backend.OpenLineageBackend"
 
-podDisruptionBudget:
-  enabled: true
-  minAvailable: 1
-persistence:
-  enabled: false
-  # In production use GCS for logs and remote metadata store
 extraEnv:
-  - name: AIRFLOW__CORE__ENABLE_XCOM_PICKLING
-    value: 'False'
-openlineage:
-  enabled: true
-  url: http://openlineage.openlineage.svc.cluster.local:5000
-# connections & secrets are injected from Kubernetes secret or Workload Identity
+  - name: AIRFLOW__KUBERNETES__NAMESPACE
+    value: airflow
+  - name: AIRFLOW__KUBERNETES__WORKER_CONTAINER_REPOSITORY
+    value: gcr.io/cdp-tan-project/airflow
+  - name: AIRFLOW__KUBERNETES__WORKER_CONTAINER_TAG
+    value: "2.10.5-spark4"
+  - name: AIRFLOW__KUBERNETES__DELETE_WORKER_PODS
+    value: "True"
+
+logs:
+  persistence:
+    enabled: false
+  path: gs://cdp-airflow-logs/
+
+scheduler:
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+webserver:
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
