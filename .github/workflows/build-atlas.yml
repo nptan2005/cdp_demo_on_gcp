@@ -9,7 +9,7 @@ jobs:
     timeout-minutes: 90
     env:
       MAVEN_OPTS: "-Xms2g -Xmx2g"
-      BRANCH: "master"                # đổi nếu cần (release-2.5.0, release-2.4.0,...)
+      BRANCH: "release-2.4.0"                # đổi nếu cần (release-2.5.0, release-2.4.0,...)
       GIT_URL: "https://github.com/apache/atlas.git"
     steps:
       - name: Checkout tiny repo
