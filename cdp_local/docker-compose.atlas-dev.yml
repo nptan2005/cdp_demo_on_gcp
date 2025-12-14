@@ -1,0 +1,201 @@
+#############################################
+# DOCKER-COMPOSE FOR APACHE ATLAS DEV SETUP
+# ATLAS, SOLR, HBASE, HIVE, KAFKA, ZK, POSTGRES
+# Author: nptan2005
+#############################################
+
+services:
+  #############################################
+  # POSTGRES (Atlas Metadata Store)
+  #############################################
+  atlas-postgres:
+    image: postgres:15
+    container_name: atlas-postgres
+    environment:
+      POSTGRES_USER: atlas
+      POSTGRES_PASSWORD: atlas
+      POSTGRES_DB: atlas
+    volumes:
+      - ./data_storage/atlas-postgres:/var/lib/postgresql/data
+    networks:
+      - atlas-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U atlas -d atlas || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  #############################################
+  # SOLR (Atlas Search Index)
+  #############################################
+  atlas-solr:
+    image: nptan2005/atlas-solr:8
+    container_name: atlas-solr
+    # official solr image entrypoint handles precreate script under /docker-entrypoint-initdb.d
+    command: solr-precreate atlas
+    ports:
+      - "8983:8983"
+    networks:
+      - atlas-net
+    volumes:
+      - ./data_storage/atlas-solr:/var/solr/data
+      - ./logs/solr/:/var/solr/logs
+      - ./solr/scripts/atlas-solr-create.sh:/docker-entrypoint-initdb.d/atlas-solr-create.sh
+      - ./solr/conf/:/opt/solr/server/solr/configsets/atlas/conf
+      - ./solr/conf/lang:/opt/solr/server/solr/configsets/atlas/lang
+    healthcheck:
+      # use built-in /opt/solr/bin/solr status (more reliable than curl/wget)
+      test: ["CMD-SHELL", "curl -sSf http://localhost:8983/solr/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  #############################################
+  # ZOOKEEPER
+  #############################################
+  zookeeper:
+    image: nptan2005/atlas-zk:3.9.2
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    networks:
+      - atlas-net
+    healthcheck:
+      # use the four-letter 'ruok' check via nc; if image lacks nc this may fail — but many zk images include it
+      test: ["CMD-SHELL", "echo ruok | nc -w 3 localhost 2181 2>/dev/null | grep -q imok || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  #############################################
+  # HBASE (Atlas Graph DB)
+  #############################################
+  atlas-hbase:
+    image: nptan2005/atlas-hbase:2.2.7
+    container_name: atlas-hbase
+    environment:
+      HBASE_MANAGES_ZK: "false"
+    volumes:
+      - ./data_storage/atlas-hbase:/data/hbase
+      - ./hbase/conf/hbase-site.xml:/opt/hbase/conf/hbase-site.xml
+      - ./logs/hbase/:/opt/hbase/logs
+    networks:
+      - atlas-net
+    restart: unless-stopped
+
+  #############################################
+  # KAFKA (Atlas Notification)
+  #############################################
+  kafka:
+    image: nptan2005/atlas-kafka:2.8.2
+    container_name: kafka
+    user: "0:0"
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+
+    # QUAN TRỌNG — KHÔNG MOUNT ĐÈ FILE CONFIG
+    volumes:
+      - ./data_storage/atlas-kafka:/var/lib/kafka/data
+      - ./kafka/scripts/atlas-kafka-setup.sh:/home/atlas/scripts/atlas-kafka-setup.sh
+      # bỏ dòng mount file properties vì gây lỗi
+      # - ./kafka/conf/atlas-kafka-application.properties:/opt/kafka/config/atlas-application.properties
+
+    # GHI ĐÈ ENTRYPOINT CHUẨN CHO KAFKA
+    entrypoint: ["/opt/kafka/bin/kafka-server-start.sh"]
+    command: ["/opt/kafka/config/server.properties"]
+
+    networks:
+      - atlas-net
+
+  #############################################
+  # HIVE (Atlas Hive Hook Test)
+  #############################################
+  hive:
+    image: nptan2005/atlas-hive:3.1.3
+    container_name: hive
+    depends_on:
+      - atlas-hbase
+      - kafka
+    volumes:
+      - ./hive/scripts/atlas-hive.sh:/home/atlas/scripts/atlas-hive.sh
+      - ./hive/scripts/atlas-hive-setup.sh:/home/atlas/scripts/atlas-hive-setup.sh
+      - ./hive/conf/hive-site.xml:/opt/hive/conf/hive-site.xml
+      - ./hive/conf/atlas-hive-application.properties:/opt/hive/conf/atlas-application.properties
+      - ./logs/hive/:/opt/hive/logs
+      # - ./data_storage/atlas-hive:/opt/hive/warehouse
+    networks:
+      - atlas-net
+    restart: unless-stopped
+
+  #############################################
+  # APACHE ATLAS
+  #############################################
+  apache-atlas:
+    image: nptan2005/apache-atlas:2.4.0
+    container_name: apache-atlas
+    depends_on:
+      - atlas-postgres
+      - atlas-solr
+      - atlas-hbase
+      - kafka
+    tmpfs:
+      - /tmp
+    environment:
+      # Java
+      JAVA_HOME: /usr/lib/jvm/java-8-openjdk-arm64
+      PATH: /usr/lib/jvm/java-8-openjdk-arm64/bin:${PATH}
+      ATLAS_HOME: /opt/atlas
+
+      # SOLR - use atlas-solr HTTP URL (Solr standalone)
+      ATLAS_GRAPH_INDEX_BACKEND: solr
+      ATLAS_SOLR_URL: http://atlas-solr:8983/solr
+
+      # GRAPH (HBase)
+      ATLAS_GRAPH_STORAGE_BACKEND: hbase
+      HBASE_CONF_DIR: /opt/hbase/conf
+      # HBASE_CONF_DIR: /dev/null
+
+      # KAFKA
+      ATLAS_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      ATLAS_KAFKA_ZK_CONNECT: zookeeper:2181
+
+      # DB
+      ATLAS_DB_TYPE: postgres
+      ATLAS_DB_DRIVER: org.postgresql.Driver
+      ATLAS_DB_URL: jdbc:postgresql://atlas-postgres:5432/atlas
+      ATLAS_DB_USER: atlas
+      ATLAS_DB_PASSWORD: atlas
+      ATLAS_ENABLE_TLS: "false"
+      ATLAS_SERVER_HTTP_PORT: "21000"
+      
+    volumes:
+      - ./atlas/conf/atlas-application.properties:/opt/atlas/conf/atlas-application.properties
+      - ./atlas/conf/janusgraph.properties:/opt/atlas/conf/janusgraph.properties 
+      - ./hbase/conf/:/opt/hbase/conf/
+      - ./hbase/conf/hbase-site.xml:/opt/atlas/conf/hbase-site.xml
+      - ./atlas/conf/log4j.xml:/opt/atlas/conf/log4j.xml
+      - ./data_storage/atlas-data/:/home/atlas/data
+      - ./logs/atlas/:/var/log/atlas
+      - ./atlas/scripts/atlas.sh:/home/atlas/scripts/atlas.sh
+    ports:
+        - "21000:21000"
+    networks:
+      - atlas-net
+    restart: unless-stopped
+
+networks:
+  atlas-net:
+    driver: bridge

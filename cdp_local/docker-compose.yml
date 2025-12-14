@@ -4,7 +4,7 @@ services:
   # SPARK
   ####################
   spark-master:
-    image: local/spark:4.0.1-full
+    image: nptan2005/spark:4.0.1
     container_name: spark-master
     ports:
       - "8080:8080"   # Spark Master Web UI
@@ -52,7 +52,7 @@ services:
       - spark-net
 
   spark-worker:
-    image: local/spark:4.0.1-full
+    image: nptan2005/spark:4.0.1
     container_name: spark-worker
     depends_on:
       - spark-master
@@ -94,7 +94,7 @@ services:
       - spark-net
 
   spark-history:
-    image: local/spark:4.0.1-full
+    image: nptan2005/spark:4.0.1
     container_name: spark-history
     command: >
       /opt/spark/bin/spark-class 
@@ -114,7 +114,7 @@ services:
   # JUPYTERLAB
   ####################
   jupyterlab:
-    image: local/jupyter-spark:4.0.1
+    image: nptan2005/jupyter-spark:4.0.1
     container_name: jupyterlab
     environment:
       - SPARK_MASTER=spark://spark-master:7077
@@ -203,7 +203,7 @@ services:
       - spark-net
 
   airflow-init:
-    image: ${AIRFLOW_IMAGE_NAME:-local/airflow:2.10.5-custom}
+    image: ${AIRFLOW_IMAGE_NAME:-nptan2005/airflow:2.10.5-python3.12-spark4.0.1}
     container_name: airflow-init
     entrypoint: /bin/bash
     command:
@@ -278,7 +278,7 @@ services:
         max-file: "3"
 
   airflow-webserver:
-    image: ${AIRFLOW_IMAGE_NAME:-local/airflow:2.10.5-custom}
+    image: ${AIRFLOW_IMAGE_NAME:-nptan2005/airflow:2.10.5-python3.12-spark4.0.1}
     container_name: airflow-webserver
     depends_on:
       - postgres-airflow
@@ -376,7 +376,7 @@ services:
         max-file: "5"
 
   airflow-scheduler:
-    image: ${AIRFLOW_IMAGE_NAME:-local/airflow:2.10.5-custom}
+    image: ${AIRFLOW_IMAGE_NAME:-nptan2005/airflow:2.10.5-python3.12-spark4.0.1}
     container_name: airflow-scheduler
     depends_on:
       - postgres-airflow
@@ -474,7 +474,7 @@ services:
         max-file: "5"
 
   airflow-dag-processor:
-    image: ${AIRFLOW_IMAGE_NAME:-local/airflow:2.10.5-custom}
+    image: ${AIRFLOW_IMAGE_NAME:-nptan2005/airflow:2.10.5-python3.12-spark4.0.1}
     container_name: airflow-dag-processor
     depends_on:
       - postgres-airflow
@@ -572,7 +572,7 @@ services:
         max-file: "3"
 
   flower:
-    image: ${AIRFLOW_IMAGE_NAME:-local/airflow:2.10.5-custom}
+    image: ${AIRFLOW_IMAGE_NAME:-nptan2005/airflow:2.10.5-python3.12-spark4.0.1}
     container_name: airflow-flower
     command: celery flower
     ports:
@@ -627,7 +627,7 @@ services:
   ####################
   
   kafka-client:
-    image: local/kafka-client:latest
+    image: nptan2005/kafka-client:latest
     container_name: kafka-client
     depends_on:
       - kafka
@@ -732,35 +732,37 @@ services:
 
   atlas-postgres:
     image: postgres:15
+    container_name: atlas-postgres
     environment:
       POSTGRES_USER: atlas
       POSTGRES_PASSWORD: atlas
       POSTGRES_DB: atlas
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - ./data_storage/atlas-postgres:/var/lib/postgresql/data
     networks:
       - spark-net
 
-  solr:
-    image: solr:8.11
+  atlas-solr:
+    image: nptan2005/atlas-solr:8
+    container_name: atlas-solr
     command: solr-precreate atlas
     ports:
       - "8983:8983"
     networks:
       - spark-net
 
-  atlas:
-    build:
-      context: .
-      dockerfile: Dockerfile.atlas
+  apache-atlas:
+    image: nptan2005/apache-atlas:2.4.0
     container_name: apache-atlas
     environment:
       JAVA_HOME: /opt/java/openjdk
-    ports:
-      - "21000:21000"
+      ATLAS_HOME: /opt/atlas
+      ATLAS_OPTS: "-Datlas.graph.index.search.solr.zookeeper-url=solr:9983"
     depends_on:
       - atlas-postgres
-      - solr
+      - atlas-solr
+    ports:
+      - "21000:21000"
     networks:
       - spark-net
   
@@ -1023,7 +1025,7 @@ services:
   # ZOOKEEPER
   ####################
   zookeeper:
-    image: zookeeper:3.7.1
+    image: nptan2005/atlas-zk:3.9.2
     container_name: zookeeper
     restart: always
     environment:
@@ -1037,7 +1039,8 @@ services:
   # KAFKA
   ####################
   kafka:
-    image: wurstmeister/kafka:2.13-2.8.1
+    # image: wurstmeister/kafka:2.13-2.8.1
+    image: nptan2005/atlas-kafka:2.8.2
     container_name: kafka
     restart: always
     depends_on:
@@ -1056,7 +1059,7 @@ services:
       - spark-net 
 
   token-service:
-    image: local/token-service:latest
+    image: nptan2005/token-service:latest
     container_name: token-service
     depends_on:
       - kafka
@@ -1092,7 +1095,7 @@ services:
   # ACCESS PROXY (nginx)
   ####################
   access-host-proxy:
-    image: local/nginx-proxy:latest
+    image: nptan2005/nginx-proxy:latest
     container_name: access-host-proxy
     ports:
       - "5432:5432"

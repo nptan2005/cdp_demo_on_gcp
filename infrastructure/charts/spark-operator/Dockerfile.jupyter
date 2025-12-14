@@ -1,5 +1,5 @@
 # Base từ Spark đã có Python 3.12
-FROM local/spark:4.0.1-full
+FROM nptan2005/spark:4.0.1
 
 USER root
 

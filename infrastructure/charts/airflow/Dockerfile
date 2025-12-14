@@ -1,7 +1,7 @@
 # -------------------------------------------------
 # Stage 1 – Spark 3.5.1 (Python 3.12)
 # -------------------------------------------------
-FROM local/spark:4.0.1-full AS spark-dist
+FROM nptan2005/spark:4.0.1 AS spark-dist
 
 # -------------------------------------------------
 # Stage 2 – Airflow base (Python 3.12)

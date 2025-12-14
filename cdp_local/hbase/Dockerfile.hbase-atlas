@@ -1,0 +1,22 @@
+FROM ubuntu:20.04
+
+ENV HBASE_VERSION=2.2.7
+ENV JAVA_HOME=/usr/lib/jvm/java-8-openjdk-arm64
+ENV PATH=$PATH:$JAVA_HOME/bin:/opt/hbase/bin
+ENV HBASE_HOME=/opt/hbase
+
+RUN apt-get update && apt-get install -y \
+    openjdk-8-jdk-headless curl tar procps && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN curl -L https://archive.apache.org/dist/hbase/$HBASE_VERSION/hbase-$HBASE_VERSION-bin.tar.gz \
+    -o /tmp/hbase.tgz && \
+    tar -xzf /tmp/hbase.tgz -C /opt && \
+    mv /opt/hbase-$HBASE_VERSION /opt/hbase && \
+    mkdir -p /opt/hbase/logs && rm /tmp/hbase.tgz
+
+COPY ./conf/hbase-site.xml /opt/hbase/conf/hbase-site.xml
+COPY ./scripts/start-hbase.sh /start-hbase.sh
+RUN chmod +x /start-hbase.sh
+
+ENTRYPOINT ["/start-hbase.sh"]
